@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<defaults_config>
+	<compress value="True"></compress>
+	<silent value="False"></silent>
+	<unpack_folder_suffix value=""></unpack_folder_suffix>
+</defaults_config>
