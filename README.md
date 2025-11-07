@@ -1,7 +1,7 @@
 # Avatar: The Game Mod Manager
 
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/JasperZebra/Avatar-Mod-Manager?style=for-the-badge&logo=github&color=00ffff&logoColor=white&labelColor=1a4d66)
-![Total Downloads](https://img.shields.io/github/downloads/JasperZebra/Avatar-Mod-Manager/total?style=for-the-badge&logo=github&color=00ffff&logoColor=white&labelColor=1a4d66) 
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/JasperZebra/AVATAR-_The_Game_Mod_Manager?style=for-the-badge&logo=github&color=00ffff&logoColor=white&labelColor=1a4d66)
+![Total Downloads](https://img.shields.io/github/downloads/JasperZebra/AVATAR-_The_Game_Mod_Manager/total?style=for-the-badge&logo=github&color=00ffff&logoColor=white&labelColor=1a4d66) 
 ![Platform](https://img.shields.io/badge/platform-windows-00ffff?style=for-the-badge&logo=windows&logoColor=00ffff&labelColor=1a4d66)
 ![Made for](https://img.shields.io/badge/made%20for-2009_AVATAR:_The_Game-00ffff?style=for-the-badge&logo=gamepad&logoColor=00ffff&labelColor=1a4d66) 
 ![Tool Type](https://img.shields.io/badge/type-mod%20manager-00ffff?style=for-the-badge&logo=package&logoColor=00ffff&labelColor=1a4d66)
