@@ -6,7 +6,7 @@
 ![Made for](https://img.shields.io/badge/made%20for-2009_AVATAR:_The_Game-00ffff?style=for-the-badge&logo=gamepad&logoColor=00ffff&labelColor=1a4d66) 
 ![Tool Type](https://img.shields.io/badge/type-mod%20manager-00ffff?style=for-the-badge&logo=package&logoColor=00ffff&labelColor=1a4d66)
 
-A modern mod manager for Avatar: The Game (2009) with load order support and file conflict resolution.
+A mod manager for Avatar: The Game (2009)
 
 ## Features
 
