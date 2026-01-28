@@ -14,6 +14,9 @@ import multiprocessing
 from multiprocessing import Pool, cpu_count
 from PIL import Image, ImageTk
 
+from pak_tool import unpack_pak, pack_pak, load_dlls
+
+
 def _collect_files_chunk(args):
     """Helper function to collect files from a directory chunk (for multiprocessing)"""
     root_dir, subdirs, viewing_dir = args
@@ -123,7 +126,7 @@ class EnhancedProgressDialog(tk.Toplevel):
     def __init__(self, parent, title="Processing"):
         super().__init__(parent)
         self.title(title)
-        self.geometry("700x550")
+        self.geometry("650x520")
         self.resizable(False, False)
         
         self.transient(parent)
@@ -157,20 +160,20 @@ class EnhancedProgressDialog(tk.Toplevel):
         
         # Status label
         self.status_label = tk.Label(content, text="Initializing, please wait...",
-                                     bg="#1e1e1e", fg="#ffffff",
-                                     font=("Segoe UI", 11, "bold"))
+                                    bg="#1e1e1e", fg="#ffffff",
+                                    font=("Segoe UI", 11, "bold"))
         self.status_label.pack(pady=(0, 10))
         
         # Progress bar
         self.progress_var = tk.DoubleVar()
-        self.progress_bar = ttk.Progressbar(content, length=600, mode='determinate',
-                                           variable=self.progress_var, maximum=100)
+        self.progress_bar = ttk.Progressbar(content, length=500, mode='determinate',
+                                        variable=self.progress_var, maximum=100)
         self.progress_bar.pack(pady=(0, 5))
         
         # Progress percentage label
         self.progress_label = tk.Label(content, text="0%",
-                                       bg="#1e1e1e", fg="#b0b0b0",
-                                       font=("Segoe UI", 9))
+                                    bg="#1e1e1e", fg="#b0b0b0",
+                                    font=("Segoe UI", 9))
         self.progress_label.pack(pady=(0, 15))
         
         # Log box label
@@ -187,20 +190,20 @@ class EnhancedProgressDialog(tk.Toplevel):
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         self.log_text = tk.Text(self.log_frame, bg="#2d2d2d", fg="#d4d4d4",
-                               font=("Consolas", 9), wrap=tk.WORD,
-                               yscrollcommand=self.scrollbar.set, relief=tk.FLAT,
-                               highlightthickness=0, padx=10, pady=10)
+                            font=("Consolas", 9), wrap=tk.WORD,
+                            yscrollcommand=self.scrollbar.set, relief=tk.FLAT,
+                            highlightthickness=0, padx=10, pady=10)
         self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.scrollbar.config(command=self.log_text.yview)
         
         # Cancel button
         self.cancel_button = tk.Button(content, text="Cancel",
-                                       bg="#F44336", fg="#ffffff",
-                                       font=("Segoe UI", 10, "bold"),
-                                       relief=tk.FLAT, padx=30, pady=10,
-                                       cursor="hand2", command=self.on_cancel,
-                                       activebackground="#d32f2f",
-                                       activeforeground="#ffffff")
+                                    bg="#F44336", fg="#ffffff",
+                                    font=("Segoe UI", 10, "bold"),
+                                    relief=tk.FLAT, padx=30, pady=10,
+                                    cursor="hand2", command=self.on_cancel,
+                                    activebackground="#d32f2f",
+                                    activeforeground="#ffffff")
         self.cancel_button.pack()
         
         # Center on parent
@@ -479,8 +482,8 @@ class ModernConfirmBox(tk.Toplevel):
 class ModManager:
     def __init__(self, root):
         self.root = root
-        self.root.title("Avatar: The Game Mod Manager | Made By: Jasper_Zebra | Version 1.0")
-        self.root.geometry("1600x1000")
+        self.root.title("Avatar: The Game Mod Manager | Made By: Jasper_Zebra | Version 2.0")
+        self.root.geometry("1366x768")
         
         # Modern dark theme colors
         self.bg_dark = "#1e1e1e"
@@ -495,7 +498,13 @@ class ModManager:
         
         # Configuration
         self.config_file = "mod_manager_config.json"
-        self.pak_tool_path = "Avatar_Dunia_PAK_archive_tool.exe"
+        
+        # Load LZO DLLs for pak_tool
+        if not load_dlls():
+            ModernMessageBox(self.root, "DLL Error",
+                        "Failed to load LZO DLLs. Make sure minilzo DLL files are in the program folder.", "error")
+            self.root.destroy()
+            return
         
         # Handle both frozen (exe) and unfrozen (script) execution
         if getattr(sys, 'frozen', False):
@@ -512,7 +521,10 @@ class ModManager:
         self.mods = []
         self.mod_enabled = {}
         self.temp_dir = None
-        self.pak_contents_cache = {}  # ADD THIS - Cache PAK file contents
+        self.pak_contents_cache = {}
+        
+        # Add pak_tool_path for compatibility
+        self.pak_tool_path = "pak_tool.py"  # Not actually used, but referenced in code
         
         self.load_config()
         self.setup_styles()
@@ -598,7 +610,7 @@ class ModManager:
         
         # LEFT SIDE - Mod List
         left_frame = tk.Frame(content_paned, bg=self.bg_dark)
-        content_paned.add(left_frame, width=900)
+        content_paned.add(left_frame, width=850)
         
         list_frame = self.create_section_frame(left_frame, "Load Order (Top = Highest Priority)")
         list_frame.pack(fill=tk.BOTH, expand=True)
@@ -623,7 +635,7 @@ class ModManager:
                                         yscrollcommand=vsb.set,
                                         xscrollcommand=hsb.set,
                                         selectmode="browse",
-                                        height=15)
+                                        height=18)
         
         # Configure columns
         self.mod_listbox.heading("enabled", text="✓", anchor=tk.CENTER)
@@ -633,12 +645,12 @@ class ModManager:
         self.mod_listbox.heading("size", text="Size", anchor=tk.W)
         self.mod_listbox.heading("modified", text="Date Modified", anchor=tk.W)
         
-        self.mod_listbox.column("enabled", width=50, minwidth=50, stretch=False, anchor=tk.CENTER)
-        self.mod_listbox.column("priority", width=50, minwidth=50, stretch=False)
-        self.mod_listbox.column("name", width=350, minwidth=250, stretch=True)
-        self.mod_listbox.column("type", width=120, minwidth=100, stretch=False)
-        self.mod_listbox.column("size", width=120, minwidth=100, stretch=False)
-        self.mod_listbox.column("modified", width=180, minwidth=150, stretch=False)
+        self.mod_listbox.column("enabled", width=40, minwidth=40, stretch=False, anchor=tk.CENTER)
+        self.mod_listbox.column("priority", width=40, minwidth=40, stretch=False)
+        self.mod_listbox.column("name", width=300, minwidth=200, stretch=True)
+        self.mod_listbox.column("type", width=100, minwidth=80, stretch=False)
+        self.mod_listbox.column("size", width=100, minwidth=80, stretch=False)
+        self.mod_listbox.column("modified", width=150, minwidth=120, stretch=False)
         
         self.mod_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         vsb.config(command=self.mod_listbox.yview)
@@ -671,7 +683,7 @@ class ModManager:
         
         # RIGHT SIDE - Details Panel with Notebook (tabs)
         right_frame = tk.Frame(content_paned, bg=self.bg_dark)
-        content_paned.add(right_frame, width=350)
+        content_paned.add(right_frame, width=450)
         
         details_frame = self.create_section_frame(right_frame, "Mod Details")
         details_frame.pack(fill=tk.BOTH, expand=True)
@@ -776,8 +788,8 @@ class ModManager:
         self.file_tree.heading("#0", text="File Path", anchor=tk.W)
         self.file_tree.heading("size", text="Size", anchor=tk.W)
 
-        self.file_tree.column("#0", width=250, minwidth=150, stretch=True)
-        self.file_tree.column("size", width=80, minwidth=60, stretch=False)
+        self.file_tree.column("#0", width=300, minwidth=150, stretch=True)
+        self.file_tree.column("size", width=100, minwidth=60, stretch=False)
 
         self.file_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         tree_vsb.config(command=self.file_tree.yview)
@@ -794,7 +806,7 @@ class ModManager:
         self.save_btn = ttk.Button(action_frame, text="💾 Save Load Order", command=self.save_config)
         self.save_btn.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.backup_btn = ttk.Button(action_frame, text="📦 Backup Original", command=self.backup_original)
+        self.backup_btn = ttk.Button(action_frame, text="📦 Backup Pak File", command=self.backup_original)
         self.backup_btn.pack(side=tk.LEFT, padx=(0, 10))
 
         self.restore_btn = ttk.Button(action_frame, text="🔄 Restore Backup", command=self.restore_backup)
@@ -859,7 +871,7 @@ class ModManager:
         self.create_tooltip(self.move_down_btn, "Move selected mod down (lower priority)")
         self.create_tooltip(self.merge_btn, "Merge all enabled mods into a single patch.pak")
         self.create_tooltip(self.save_btn, "Save the current load order to config file")
-        self.create_tooltip(self.backup_btn, "Create a backup of the original patch.pak")
+        self.create_tooltip(self.backup_btn, "Create a backup of the currently selected patch.pak")
         self.create_tooltip(self.restore_btn, "Restore patch.pak from backup")
 
     def create_tooltip(self, widget, text):
@@ -1038,7 +1050,7 @@ class ModManager:
         thread.start()
 
     def _unpack_for_viewing_worker(self, mod_path, viewing_dir):
-        """Worker thread to unpack mod for viewing"""
+        """Worker thread to unpack mod for viewing using pak_tool"""
         import time
         
         try:
@@ -1050,54 +1062,16 @@ class ModManager:
             with open(marker_file, 'w') as f:
                 f.write(mod_path)
             
-            # Unpack
-            cmd = [self.pak_tool_path, mod_path, viewing_dir]
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, 
-                                    stderr=subprocess.PIPE)
-            
-            # Monitor extraction progress
-            last_file_count = 0
-            last_update_time = time.time()
-            update_interval = 1.5  # Update every 1.5 seconds
-            
             mod_name = os.path.basename(mod_path)
             
-            while process.poll() is None:
-                current_time = time.time()
-                
-                # Update every 1.5 seconds
-                if current_time - last_update_time >= update_interval:
-                    try:
-                        if os.path.exists(viewing_dir):
-                            file_count = sum(1 for _, _, files in os.walk(viewing_dir) 
-                                        for _ in files if not _.startswith('.'))
-                            
-                            if file_count != last_file_count:
-                                last_file_count = file_count
-                                
-                                # Update status bar
-                                self.root.after(0, lambda fc=file_count, mn=mod_name: 
-                                            self.status_var.set(f"Extracting {mn}... {fc} files"))
-                                
-                                # Check if this mod is currently selected
-                                selection = self.mod_listbox.selection()
-                                if selection:
-                                    idx = int(selection[0])
-                                    if idx < len(self.mods) and self.mods[idx] == mod_path:
-                                        # Update file tree in background
-                                        self.root.after(0, lambda mp=mod_path, vd=viewing_dir: 
-                                                    self._update_file_tree_async(mp, vd))
-                            
-                            last_update_time = current_time
-                    except Exception as e:
-                        pass
-                
-                time.sleep(0.2)  # Check every 200ms
+            # Use pak_tool directly - it handles its own progress
+            self.root.after(0, lambda mn=mod_name: 
+                        self.status_var.set(f"Extracting {mn}..."))
             
-            # Wait for process to complete
-            process.wait()
+            # Call unpack_pak directly
+            success = unpack_pak(mod_path, viewing_dir, use_parallel=True)
             
-            if process.returncode == 0:
+            if success:
                 # Final count
                 file_count = sum(1 for _, _, files in os.walk(viewing_dir) 
                             for _ in files if not _.startswith('.'))
@@ -1124,7 +1098,7 @@ class ModManager:
             error_msg = str(e)
             self.root.after(0, lambda msg=error_msg: 
                         self.status_var.set(f"⚠️ Extraction error: {msg}"))
-        
+                
     def _update_file_tree_async(self, mod_path, viewing_dir):
         """Update file tree asynchronously without blocking UI"""
         # Quick check if we should update
@@ -1512,21 +1486,52 @@ class ModManager:
         self.file_count_label.config(text=f"{len(filtered)} matching files ({size_mb:.2f} MB)")
 
     def backup_original(self):
-        """Backup the original patch.pak file"""
-        if not os.path.exists(self.output_path):
+        """Backup the selected mod's PAK file to pak_backups/timestamp folder"""
+        selection = self.mod_listbox.selection()
+        
+        if not selection:
+            ModernMessageBox(self.root, "No Mod Selected",
+                        "Please select a mod from the list to backup.", "warning")
+            return
+        
+        idx = int(selection[0])
+        mod_path = self.mods[idx]
+        
+        if not os.path.exists(mod_path):
             ModernMessageBox(self.root, "File Not Found",
-                        f"No {self.output_path} file found to backup!", "warning")
+                        f"The selected mod file does not exist:\n\n{mod_path}", "error")
+            return
+        
+        # Create timestamped folder inside pak_backups
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backups_folder = os.path.join(self.script_dir, "pak_backups", timestamp)
+        os.makedirs(backups_folder, exist_ok=True)
+        
+        # Backup filename is always patch.pak
+        mod_filename = os.path.basename(mod_path)
+        backup_filename = "patch.pak"
+        backup_path = os.path.join(backups_folder, backup_filename)
+        
+        # Confirm with user
+        confirm = ModernConfirmBox(self.root, "Backup Mod",
+                                f"Create backup of:\n{mod_filename}\n\nAs:\npak_backups/{timestamp}/patch.pak\n\nContinue?")
+        confirm.wait_window()
+        
+        if not confirm.result:
             return
         
         try:
-            shutil.copy2(self.output_path, self.backup_path)
-            self.status_var.set(f"✓ Backup created: {self.backup_path}")
+            shutil.copy2(mod_path, backup_path)
+            file_size = os.path.getsize(backup_path)
+            size_mb = file_size / (1024 * 1024)
+            
+            self.status_var.set(f"✓ Backup created: pak_backups/{timestamp}/patch.pak")
             ModernMessageBox(self.root, "Backup Created",
-                        f"Original patch.pak backed up successfully!\n\nBackup: {self.backup_path}", "success")
+                        f"Mod backed up successfully!\n\nOriginal: {mod_filename}\nBackup: pak_backups/{timestamp}/patch.pak\nSize: {size_mb:.2f} MB\n\nLocation: {backups_folder}", "success")
         except Exception as e:
             ModernMessageBox(self.root, "Backup Failed",
                         f"Failed to create backup:\n\n{str(e)}", "error")
-
+                        
     def restore_backup(self):
         """Restore patch.pak from backup"""
         if not os.path.exists(self.backup_path):
@@ -1694,11 +1699,6 @@ class ModManager:
                         "Please enable at least one mod to merge!", "warning")
             return
         
-        if not os.path.exists(self.pak_tool_path):
-            ModernMessageBox(self.root, "Tool Not Found",
-                        f"PAK tool executable not found!\n\nMake sure '{self.pak_tool_path}' is in the same folder as this program.", "error")
-            return
-        
         # Create and show progress dialog
         progress_dialog = EnhancedProgressDialog(self.root, "Merging Mods")
         
@@ -1708,14 +1708,13 @@ class ModManager:
         thread.start()
 
     def _merge_worker(self, progress_dialog, enabled_mods):
-        """Worker thread for merging mods - now takes enabled_mods parameter"""
+        """Worker thread for merging mods - now uses pak_tool directly"""
         try:
             progress_dialog.append_log("🚀 Starting merge process, please wait.")
             progress_dialog.set_status("Preparing, please wait.")
             progress_dialog.set_progress(0)
             
             # Create temporary directory in the program's root directory
-            # Handle both frozen (exe) and unfrozen (script) execution
             if getattr(sys, 'frozen', False):
                 script_dir = os.path.dirname(sys.executable)
             else:
@@ -1786,13 +1785,16 @@ class ModManager:
             if files_copied == 0:
                 raise Exception("No mod files were copied! Make sure to view your mods in the 'Files' tab first to extract them.")
             
-            # Pack the merged directory
+            # Pack the merged directory using pak_tool
             progress_dialog.set_status("Creating final patch.pak, please wait.")
             progress_dialog.set_progress(90)
             progress_dialog.append_log(f"\n📦 Packing merged files into {self.output_path}...")
             
             try:
-                self.pack_pak(merge_dir, self.output_path, progress_dialog)
+                # Call pack_pak directly
+                success = pack_pak(merge_dir, self.output_path, use_compression=True, use_parallel=False)
+                if not success:
+                    raise Exception("pack_pak returned False")
             except Exception as e:
                 raise Exception(f"Failed to create patch.pak: {str(e)}")
             
@@ -1863,121 +1865,6 @@ class ModManager:
                     progress_dialog.append_log(f"      Copying {total_copied} files merge folder.")
         
         return files_copied
-
-    def unpack_pak(self, pak_path, output_dir, progress_dialog=None):
-        import time
-        import os
-        
-        cmd = [self.pak_tool_path, pak_path, output_dir]
-        
-        if progress_dialog:
-            progress_dialog.append_log(f"      Unpacking: {os.path.basename(pak_path)}")
-            progress_dialog.append_log(f"      Destination: {output_dir}")
-        
-        process = subprocess.Popen(cmd)
-        
-        # Monitor the output directory
-        last_file_count = 0
-        check_interval = 0.10
-        min_file_increment = 99  # Log every 500 files
-        
-        while process.poll() is None:
-            try:
-                if os.path.exists(output_dir):
-                    file_count = sum(1 for _, _, files in os.walk(output_dir) for _ in files)
-                    
-                    # Only log if file count increased by at least min_file_increment
-                    if file_count >= last_file_count + min_file_increment:
-                        # Calculate total size
-                        total_size = 0
-                        for dirpath, dirnames, filenames in os.walk(output_dir):
-                            for filename in filenames:
-                                filepath = os.path.join(dirpath, filename)
-                                try:
-                                    total_size += os.path.getsize(filepath)
-                                except:
-                                    pass
-                        
-                        size_mb = total_size / (1024 * 1024)
-                        if progress_dialog:
-                            progress_dialog.append_log(f"      Unpacking files: {file_count} / {size_mb:.2f} MB")
-                        last_file_count = file_count
-            except Exception as e:
-                pass
-            
-            time.sleep(check_interval)
-        
-        # Final count
-        if os.path.exists(output_dir) and progress_dialog:
-            file_count = sum(1 for _, _, files in os.walk(output_dir) for _ in files)
-            total_size = sum(os.path.getsize(os.path.join(dirpath, filename)) 
-                            for dirpath, dirnames, filenames in os.walk(output_dir) 
-                            for filename in filenames)
-            size_mb = total_size / (1024 * 1024)
-            progress_dialog.append_log(f"      ✅ Unpacked {file_count}/{file_count} ... {size_mb:.2f} MB")
-        
-        return_code = process.wait()
-        
-        if return_code != 0:
-            raise Exception(f"Failed to unpack {pak_path}")
-
-    def pack_pak(self, source_dir, output_pak, progress_dialog=None):
-        import time
-        import os
-        
-        cmd = [self.pak_tool_path, source_dir, output_pak, "-c"]
-        
-        if progress_dialog:
-            progress_dialog.append_log(f"   Packing: {os.path.basename(output_pak)}")
-            
-            # Count source files
-            if os.path.exists(source_dir):
-                source_file_count = sum(1 for _, _, files in os.walk(source_dir) for _ in files)
-                source_size = sum(os.path.getsize(os.path.join(dirpath, filename)) 
-                                for dirpath, dirnames, filenames in os.walk(source_dir) 
-                                for filename in filenames)
-                source_size_mb = source_size / (1024 * 1024)
-                progress_dialog.append_log(f"   Source: {source_file_count} files ({source_size_mb:.2f} MB)")
-        
-        process = subprocess.Popen(cmd)
-        
-        # Monitor the output file
-        last_pak_size = 0
-        last_logged_mb = 0
-        check_interval = 0.10
-        size_increment_mb = 10  # Log every 50 MB instead of 5 MB
-        
-        while process.poll() is None:
-            try:
-                if os.path.exists(output_pak):
-                    pak_size = os.path.getsize(output_pak)
-                    size_mb = pak_size / (1024 * 1024)
-                    
-                    # Log every 50 MB increment
-                    if size_mb >= last_logged_mb + size_increment_mb:
-                        if progress_dialog:
-                            progress_dialog.append_log(f"   {size_mb:.2f} MB of files repacked.")
-                        last_logged_mb = size_mb
-            except Exception as e:
-                pass
-            
-            time.sleep(check_interval)
-        
-        # Final size and file count
-        if os.path.exists(output_pak) and progress_dialog:
-            pak_size = os.path.getsize(output_pak)
-            size_mb = pak_size / (1024 * 1024)
-            
-            # Count files that were packed (from source)
-            file_count = sum(1 for _, _, files in os.walk(source_dir) for _ in files)
-            
-            progress_dialog.append_log(f"   ✅ Created {os.path.basename(output_pak)}")
-            progress_dialog.append_log(f"   Packed {file_count} files → {size_mb:.2f} MB")
-        
-        return_code = process.wait()
-        
-        if return_code != 0:
-            raise Exception(f"Failed to pack {output_pak}")
     
     def save_config(self):
         config = {
